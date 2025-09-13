@@ -23,6 +23,7 @@ FROM customers;
 
 
 -- logical operators 
+-- AND, OR, NOT, IN, NOT IN, BETWEEN, LIKE, IS NULL, IS NOT NULL
 
 -- first updating our table a little, then we'll learn logical operators
 
@@ -71,6 +72,12 @@ WHERE NOT job = 'Manager' AND NOT job = 'Asst. Manager';
 SELECT *
 FROM employees
 WHERE hire_date BETWEEN '2023-01-04' AND '2023-01-07';
+-- or
+SELECT *
+FROM employees
+WHERE hire_date >= '2023-01-04' AND hire_date <= '2023-01-07';
+
+
 
 SELECT * 
 FROM employees
@@ -110,6 +117,7 @@ WHERE job LIKE "_a%";
 
 
 -- ORDER BY clause
+-- ORDER BY is used to sort the result set of a query by one or more columns.
 
 SELECT * FROM employees
 ORDER BY last_name ASC;  -- by default it is ascending only
@@ -120,6 +128,12 @@ ORDER BY last_name DESC;
 SELECT * FROM transactions
 ORDER BY amount DESC, customer_id DESC;  -- if amount is same, then it will be ordered by customer_id
 
+-- Sort by column position (not recommended, but works)
+SELECT employee_id, first_name, last_name
+FROM employees
+ORDER BY 2;   -- sorts by 2nd column (first_name)
+
+
 
 
 
@@ -127,7 +141,8 @@ ORDER BY amount DESC, customer_id DESC;  -- if amount is same, then it will be o
 
 -- LIMIT clause
 -- Limit clause is used to limit the number of records. Useful if u are working with a lot of data. Can be used to display a large data on pages(pagination) 
- 
+ -- The LIMIT clause is used to restrict the number of rows returned by a query. It’s often combined with ORDER BY when you want the "top N" rows.
+
 SELECT * FROM customers
 LIMIT 1;
 
@@ -149,12 +164,18 @@ LIMIT 3;
 SELECT * FROM customers
 LIMIT 1, 3;   -- 1 is the offset: skip the first row. 3 is the count: return the next 3 rows.
 
+SELECT * 
+FROM employees 
+LIMIT 5 OFFSET 2;    -- skip 2, return next 5
+
+
 
 
 
 
 
 -- UNIONS
+-- The UNION operator combines the results of two or more SELECT queries into a single result set. Each SELECT must return the same number of columns and the columns must have compatible data types.
 -- Union combines the results of 2 or more select statements. all tables should have same number of columns.
 -- Explore UNION ALL also. In union, if 2 tables have duplicate row, it'll be displayed only once but if union all written, duplicates are allowed there
 
@@ -205,6 +226,9 @@ ON a.supervisor_id = b.employee_id;
 
 
 -- Views
+-- A View is a virtual table created from the result of an SQL query.
+-- It does not store data physically → only stores the query.
+-- Whenever you query the view, it dynamically fetches fresh data from the base tables.
 -- a virtual table based on the result-set of an SQL statement. The fields in a view are fields from 1 or more tables in the database. They're not real tables, but can be interacted with as if they were 
 
 -- suppose our boss want us to make an attendance sheet of employees table of first and last name. We can also make another table, but then if we have to remove an employee, then we have to make changes in both the tables. So, we will use views here 
@@ -215,7 +239,39 @@ FROM employees;
 
 select * from employee_attendance;  -- -- Now if we make any change(say add employee) and then run this then it will update, this is the benefit of view
 
+-- Modify or Drop a View
+ALTER VIEW employee_attendance AS
+SELECT first_name, last_name, job
+FROM employees;
+
+DROP VIEW employee_attendance;
+
 drop view employee_attendance;
+
+
+-- Updating Views
+-- If a view is based on one simple table (no aggregates, no joins) → it’s updatable (you can INSERT, UPDATE, DELETE through the view).
+-- If a view has joins, aggregations, DISTINCT, GROUP BY, UNION, etc. → it’s usually read-only.   (but I created a view using join and tried to update it and it was being updated :)  so explore this... :)
+
+
+-- if we insert, update or delete something in a view, the original table will also get updated
+
+
+-- | Feature | Table                           | View                           |
+-- | ------- | ------------------------------- | ------------------------------ |
+-- | Storage | Stores data physically          | Stores only query (virtual)    |
+-- | Speed   | Faster (direct data)            | Slightly slower (runs query)   |
+-- | Update  | Can always insert/update/delete | Only sometimes (if simple)     |
+-- | Purpose | Data storage                    | Query simplification, security |
+
+
+
+
+-- Benefits of Views
+-- Simplifies queries → write once, reuse many times.
+-- Security → restrict users to certain columns/rows (hide sensitive data).
+-- Abstraction → underlying table structure changes won’t affect end-users if they query via views.
+-- Consistency → ensures same business logic/query everywhere.
 
 
 
@@ -228,6 +284,7 @@ drop view employee_attendance;
 -- MySQL normally searches sequentially through a column
 -- The longer the column, the more expensive the operation is
 -- UPDATE takes more time, SELECT takes less time
+-- Indexes improve read performance (SELECT, WHERE, ORDER BY, JOIN) but can slow down writes (INSERT, UPDATE, DELETE) because the index must be updated.
 
 -- Why Use Indexes?
 -- Faster SELECT queries
@@ -235,6 +292,16 @@ drop view employee_attendance;
 -- Reduces full table scans
 
 show indexes from customers;
+
+-- Column Explanation:
+-- Table → Table name.
+-- Non_unique → 0 = unique index, 1 = not unique.
+-- Key_name → Name of the index.
+-- Seq_in_index → Column position in the index (1 = first).
+-- Column_name → Column included in the index.
+-- Collation → Sorting order (A = ascending).
+-- Cardinality → Approximate number of unique values in the index.
+-- Index_type → Usually BTREE.
 
 -- Single column index
 CREATE INDEX last_name_idx
@@ -285,6 +352,7 @@ WHERE first_name = 'Ayush';
 
 
 -- subquery
+-- A subquery is a query inside another query. It is used when you want the result of one query to be used in another.
 -- a query within another query
 
 SELECT first_name, last_name, hourly_pay, 
@@ -295,6 +363,57 @@ FROM employees;
 SELECT first_name, last_name, hourly_pay 
 FROM employees
 where hourly_pay > (SELECT AVG(hourly_pay) FROM employees);
+
+
+-- different types of subqueries: Single-row Subquery, Multi-row Subquery, Multi-column Subquery, Correlated Subquery, Subquery in FROM Clause (Derived Table), Subquery in SELECT Clause
+
+-- single
+SELECT first_name, salary
+FROM employees
+WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- multi row: Returns multiple values → used with IN, ANY, or ALL.
+SELECT first_name, department_id
+FROM employees
+WHERE department_id IN (SELECT department_id
+                        FROM departments
+                        WHERE location = 'New York');
+                        
+                        
+-- Multi-column Subquery
+-- Find employees who have the same job and department as employee_id 101
+SELECT first_name, job_id, department_id
+FROM employees
+WHERE (job_id, department_id) = 
+      (SELECT job_id, department_id
+       FROM employees
+       WHERE employee_id = 101);
+
+-- Correlated Subquery: The subquery depends on the outer query (executed row by row).
+-- Find employees who earn more than the average salary of their department
+SELECT e.first_name, e.salary, e.department_id
+FROM employees e
+WHERE e.salary > (
+    SELECT AVG(salary)
+    FROM employees
+    WHERE department_id = e.department_id
+);
+
+-- Subquery in FROM Clause (Derived Table): Treats the subquery as a temporary table.
+-- Find department-wise highest salary
+SELECT department_id, MAX(salary) AS max_salary
+FROM (SELECT department_id, salary FROM employees) AS temp
+GROUP BY department_id;
+
+
+-- Subquery in SELECT Clause: Returns a value that appears as a column in the result.
+-- Show each employee and total number of employees in the company
+SELECT first_name,
+       (SELECT COUNT(*) FROM employees) AS total_employees
+FROM employees;
+
+
+
 
 
 -- distinct keyword
@@ -394,6 +513,9 @@ GROUP BY employee_id WITH ROLLUP;
 -- ON DELETE       https://www.youtube.com/watch?v=vANfY96ccOY&list=PLZPZq0r_RZOMskz6MdsMOgxzheIyjo-BZ&index=29&t=2s&ab_channel=BroCode
 -- on delete set null- when a fk is deleted, replace fk with null
 -- on delete cascade- when a fk is deleted, delete row 
+-- RESTRICT/NO ACTION
+
+-- ON DELETE specifies what happens to the child table rows when a parent table row is deleted. It’s part of the FOREIGN KEY definition.
 
 -- while creating table
 -- CREATE TABLE transactions (
@@ -432,6 +554,8 @@ ON DELETE CASCADE;
 -- now if we delete, the whole row wll be deleted
 delete from customers where customer_id=4;
 
+-- Deleting from Child Table: Always allowed. Deleting a child row does not affect the parent table, because the parent exists independently.
+
 
 
 SELECT * FROM transactions;
@@ -464,6 +588,58 @@ CALL get_customers();
 DROP PROCEDURE get_customers;
 
 
+-- Types of Parameters in Stored Procedures: Need to study properly
+-- IN → Input only (you pass a value, procedure uses it).
+-- OUT → Output only (procedure gives you back a value).
+-- INOUT → Both input and output (you pass a value, it gets modified, and returned).
+
+-- Rule of Thumb
+-- IN → like a function argument.
+-- OUT → like a return value.
+-- INOUT → like passing a variable by reference.
+
+-- IN Parameter: You pass a value → procedure uses it.
+DELIMITER $$
+CREATE PROCEDURE GetEmployeeByJob(IN jobTitle VARCHAR(50))
+BEGIN
+    SELECT first_name, last_name, job
+    FROM employees
+    WHERE job = jobTitle;
+END $$
+DELIMITER ;
+CALL GetEmployeeByJob('cook');  -- Call it
+
+-- OUT Parameter: Procedure calculates something and returns it via an OUT variable.
+DELIMITER $$
+CREATE PROCEDURE GetTotalEmployees(OUT total INT)
+BEGIN
+    SELECT COUNT(*) INTO total   -- assigns value to OUT parameter
+    FROM employees;
+END $$
+DELIMITER ;
+
+CALL GetTotalEmployees(@emp_count);   -- procedure sets @emp_count
+SELECT @emp_count;   -- see the value returned
+
+
+-- INOUT Parameter: You give a value → procedure changes it → returns the new value.
+DELIMITER $$
+CREATE PROCEDURE UpdatePay(INOUT emp_id INT, IN increment DECIMAL(5,2))
+BEGIN
+    UPDATE employees
+    SET hourly_pay = hourly_pay + increment
+    WHERE employee_id = emp_id;
+END $$
+DELIMITER ;
+
+SET @id = 3;
+CALL UpdatePay(@id, 2.5);
+
+
+
+
+
+
 
 
 
@@ -473,6 +649,89 @@ DROP PROCEDURE get_customers;
 -- TRIGGERS
 -- when an event happens, do something. ex.: insert, update, delete. checks data, handles error, auditing tables.
 -- https://www.youtube.com/watch?v=jVbj72YO-8s&list=PLZPZq0r_RZOMskz6MdsMOgxzheIyjo-BZ&index=31&ab_channel=BroCode
+
+-- A trigger is a special object in MySQL that automatically executes some code when an event happens on a table.
+-- Events can be:
+-- INSERT
+-- UPDATE
+-- DELETE
+-- So, a trigger = “If something happens in this table → do this automatically.”
+
+-- Types of Triggers
+-- BEFORE INSERT / AFTER INSERT
+-- BEFORE UPDATE / AFTER UPDATE
+-- BEFORE DELETE / AFTER DELETE
+-- BEFORE → executes before the action happens.
+-- AFTER → executes after the action happens.
+
+CREATE TABLE employee_log (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    action VARCHAR(50),
+    action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Now the trigger:
+DELIMITER $$
+CREATE TRIGGER after_employee_insert
+AFTER INSERT ON employees
+FOR EACH ROW
+BEGIN
+    INSERT INTO employee_log (employee_id, action)
+    VALUES (NEW.employee_id, 'Employee Added');
+END $$
+DELIMITER ;
+
+
+-- explore other types of triggers...
+
+-- Rule of Thumb
+-- NEW → used in INSERT or UPDATE (represents new values).
+-- OLD → used in UPDATE or DELETE (represents old values).
+-- Triggers run automatically, you don’t call them manually.
+
+
+
+
+
+
+-- CTE
+-- A CTE (Common Table Expression) is a temporary result set that you can reference within a SELECT, INSERT, UPDATE, or DELETE statement.
+-- It makes queries easier to read, organize, and reuse.
+-- Think of it as a named subquery that exists only during the execution of the main query.
+
+-- Example 1: Simple CTE
+WITH HighSalaryEmployees AS (
+    SELECT first_name, last_name, salary
+    FROM employees
+    WHERE salary > 5000
+)
+SELECT * FROM HighSalaryEmployees;
+
+-- Example 2: CTE with Aggregation
+WITH DeptAvg AS (
+    SELECT department_id, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department_id
+)
+SELECT * 
+FROM DeptAvg
+WHERE avg_salary > 6000;
+
+
+-- Example 3: Recursive CTE: Used for hierarchical data (like managers → employees).   Couldnt understand
+-- Understand this example... Currently I've just copy pasted it
+WITH RECURSIVE EmployeeHierarchy AS (
+    -- Base case
+    SELECT employee_id, manager_id, first_name, 1 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+    UNION ALL
+    -- Recursive part
+    SELECT e.employee_id, e.manager_id, e.first_name, eh.level + 1
+    FROM employees e
+    INNER JOIN EmployeeHierarchy eh ON e.manager_id = eh.employee_id
+)
+SELECT * FROM EmployeeHierarchy;
 
 
 
@@ -489,5 +748,4 @@ DROP PROCEDURE get_customers;
 
 
  
-
 
